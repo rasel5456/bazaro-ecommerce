@@ -335,13 +335,17 @@ export default function App() {
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
-  // Deep link support: opening a URL like "?product=<id>" jumps straight to that product
+  // Deep link support: opening a URL like "?p=<shortcode>" (or the older "?product=<id>") jumps straight to that product
   useEffect(() => {
     if (loadingCatalog || catalog.length === 0) return;
     const params = new URLSearchParams(window.location.search);
-    const productId = params.get("product");
-    if (productId) {
-      const match = catalog.find((p) => p.id === productId);
+    const code = params.get("p");
+    const legacyId = params.get("product");
+    if (code) {
+      const match = catalog.find((p) => p.short_id === code) || catalog.find((p) => p.id === code);
+      if (match) { setActiveProduct(match); setView("product"); }
+    } else if (legacyId) {
+      const match = catalog.find((p) => p.id === legacyId);
       if (match) { setActiveProduct(match); setView("product"); }
     }
   }, [loadingCatalog, catalog]);
@@ -463,11 +467,12 @@ export default function App() {
 
     if (productModal.mode === "add") {
       const g = grads[Math.floor(Math.random() * grads.length)];
+      const shortId = Math.random().toString(36).slice(2, 9);
       const { data, error } = await supabase.from("products").insert({
         name: form.name, category: form.category, price: Number(form.price),
         old_price: form.old_price ? Number(form.old_price) : null, badge: form.badge || null,
         icon: form.icon, grad_from: g[0], grad_to: g[1], rating: 4.0, sold: 0, created_by: user.id,
-        image_url: imageUrl, paypal_email: form.paypal_email || null,
+        image_url: imageUrl, paypal_email: form.paypal_email || null, short_id: shortId,
       }).select().single();
       if (error) { showToast("Error: " + error.message); return; }
       setCatalog((prev) => [data, ...prev]);
@@ -669,7 +674,8 @@ export default function App() {
                   className="btn-add"
                   style={{ marginTop: 0 }}
                   onClick={() => {
-                    const url = `${window.location.origin}${window.location.pathname}?product=${activeProduct.id}`;
+                    const code = activeProduct.short_id || activeProduct.id;
+                    const url = `${window.location.origin}${window.location.pathname}?p=${code}`;
                     navigator.clipboard.writeText(url);
                     showToast("Product link copied!");
                   }}
