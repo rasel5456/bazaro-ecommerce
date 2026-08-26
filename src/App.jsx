@@ -12,7 +12,7 @@ import "./styles.css";
 const CATEGORIES = ["Electronics", "Fashion", "Home & Living", "Beauty", "Toys"];
 const ICONS = { Package, Headphones, Watch, Shirt, Lamp, Sparkle, Car, Blocks, Backpack, Speaker };
 const ICON_NAMES = Object.keys(ICONS);
-const CART_KEY = "bazaro_guest_cart";
+const CART_KEY = "Amazon_guest_cart";
 
 const CATEGORY_BLOCKS = [
   { title: "Top picks in Electronics", items: [["Earbuds", "Headphones"], ["Smart watches", "Watch"], ["Speakers", "Speaker"], ["Everyday gadgets", "Package"]], link: "Explore all Electronics" },
@@ -22,7 +22,7 @@ const CATEGORY_BLOCKS = [
 ];
 
 const HERO_SLIDES = [
-  { eyebrow: "BAZARO EXCLUSIVE", title: "Big Summer Sale", sub: "Up to 40% off electronics, fashion & home essentials", cta: "Shop the sale", grad: ["#131921", "#3A6EA5"] },
+  { eyebrow: "Amazon EXCLUSIVE", title: "Big Summer Sale", sub: "Up to 40% off electronics, fashion & home essentials", cta: "Shop the sale", grad: ["#131921", "#3A6EA5"] },
   { eyebrow: "JUST LANDED", title: "New Arrivals Every Week", sub: "Fresh picks in fashion and home decor, curated for you", cta: "See what's new", grad: ["#232F3E", "#B33A2E"] },
   { eyebrow: "ON ORDERS OVER $25", title: "Free Shipping, Every Day", sub: "Fast, reliable delivery nationwide with easy 30-day returns", cta: "Start shopping", grad: ["#0F5C5C", "#FF9900"] },
 ];
@@ -276,7 +276,7 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "", phone: "", address: "" });
   const [placedOrder, setPlacedOrder] = useState(null);
-  const [settings, setSettings] = useState({ paypal_client_id: "sb", store_name: "bazaro" });
+  const [settings, setSettings] = useState({ paypal_client_id: "sb", store_name: "Amazon" });
   const [productModal, setProductModal] = useState(null); // { mode, initial }
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [adminOrders, setAdminOrders] = useState([]);
@@ -518,7 +518,7 @@ export default function App() {
       <header className="header">
         <div className="header-top">
           <div className="logo" onClick={() => { setView("home"); setActiveCategory(null); setQuery(""); }}>
-            <span className="logo-mark">B</span><span>bazaro</span>
+            <span className="logo-mark">A</span><span>Amazon</span>
           </div>
           <div className="deliver">
             <MapPin size={16} />
@@ -526,7 +526,7 @@ export default function App() {
           </div>
           <div className="search-wrap">
             <select className="search-cat"><option>All</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
-            <input placeholder="Search Bazaro" value={query} onChange={(e) => { setQuery(e.target.value); setView("home"); setActiveCategory(null); }} />
+            <input placeholder="Search Amazon" value={query} onChange={(e) => { setQuery(e.target.value); setView("home"); setActiveCategory(null); }} />
             <button className="search-btn"><Search size={18} color="#131921" /></button>
           </div>
           <nav className="header-actions">
@@ -783,17 +783,17 @@ export default function App() {
 
       <footer className="footer">
         <div className="footer-cols">
-          <div><h5>Get to Know Us</h5><p>About Bazaro</p><p>Careers</p><p>Press</p><p>Bazaro Science</p></div>
+          <div><h5>Get to Know Us</h5><p>About Amazon</p><p>Careers</p><p>Press</p><p>Amazon Science</p></div>
           <div><h5>Make Money with Us</h5><p>Advertise Your Products</p><p>Become an Affiliate</p></div>
-          <div><h5>Bazaro Payment Products</h5><p>Bazaro Business Card</p><p>Shop with Points</p></div>
+          <div><h5>Amazon Payment Products</h5><p>Amazon Business Card</p><p>Shop with Points</p></div>
           <div><h5>Let Us Help You</h5><p onClick={() => setView("orders")} className="link">Your Orders</p><p>Shipping Rates &amp; Policies</p><p>Returns &amp; Replacements</p><p>Help</p></div>
         </div>
         <div className="footer-meta">
-          <div className="brand-bottom"><span className="logo-mark small">B</span><span>bazaro</span></div>
+          <div className="brand-bottom"><span className="logo-mark small">B</span><span>Amazon</span></div>
           <span>English</span><span>USD - U.S. Dollar</span><span>United States</span>
         </div>
         <StripeDivider />
-        <p className="copyright">© 1996–2026 Bazaro.com — a university/demo project. Not affiliated with Amazon.com, Inc.</p>
+        <p className="copyright">© 1996–2026 Amazon.com — a university/demo project. Not affiliated with Amazon.com, Inc.</p>
       </footer>
 
       {isAdmin && (
@@ -821,3 +821,4 @@ export default function App() {
     </div>
   );
 }
+
