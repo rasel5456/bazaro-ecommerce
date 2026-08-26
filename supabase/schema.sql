@@ -1,5 +1,5 @@
 -- ============================================================
--- amazon e-commerce schema for Supabase
+-- Bazaro e-commerce schema for Supabase
 -- Run this whole file in: Supabase Dashboard -> SQL Editor -> New query
 -- ============================================================
 
@@ -30,7 +30,7 @@ create policy "Products are viewable by everyone"
   on products for select
   using (true);
 
--- Only logged-in users can add products ("Sell on amazon")
+-- Only logged-in users can add products ("Sell on Bazaro")
 create policy "Authenticated users can insert products"
   on products for insert
   to authenticated

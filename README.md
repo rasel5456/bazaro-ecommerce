@@ -1,4 +1,4 @@
-# amazon — Setup & Deployment Guide
+# Bazaro — Setup & Deployment Guide
 
 A real, deployable e-commerce site (React + Vite + Supabase). No `window.storage` —
 everything is backed by an actual PostgreSQL database via Supabase.
@@ -18,7 +18,7 @@ everything is backed by an actual PostgreSQL database via Supabase.
 ## 2. Configure the project locally
 
 ```bash
-cd amazon-supabase
+cd bazaro-supabase
 cp .env.example .env
 ```
 
@@ -52,7 +52,7 @@ Turn it back on before a real public launch.
 4. Under **Environment Variables**, add:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-5. Click **Deploy**. You'll get a live URL like `amazon.vercel.app`.
+5. Click **Deploy**. You'll get a live URL like `bazaro.vercel.app`.
 
 ## 4b. Deploy — Netlify (alternative)
 
@@ -65,7 +65,7 @@ Turn it back on before a real public launch.
 ## Project structure
 
 ```
-amazon-supabase/
+bazaro-supabase/
 ├── supabase/schema.sql   ← run this in Supabase SQL Editor
 ├── src/
 │   ├── supabaseClient.js ← connects to your Supabase project
@@ -79,12 +79,12 @@ amazon-supabase/
 
 ## How data flows
 
-- **products** — public read for everyone; insert only for signed-in users (via "Sell on amazon").
+- **products** — public read for everyone; insert only for signed-in users (via "Sell on Bazaro").
 - **cart_items** — private per user (Row Level Security enforces `auth.uid() = user_id`).
 - **orders** — private per user; created on checkout.
 - **Auth** — real email/password accounts via Supabase Auth (not a fake demo login).
 
 ## Note on branding
 
-The name/logo ("amazon") and colors are original — not Amazon's actual logo or trademark —
+The name/logo ("bazaro") and colors are original — not Amazon's actual logo or trademark —
 even though the layout and UX flow are closely modeled on Amazon's site for this project.

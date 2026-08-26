@@ -3,7 +3,7 @@ import {
   ShoppingCart, Search, Star, Plus, Minus, Package,
   Truck, Shield, ChevronLeft, ChevronRight, Trash2, Check,
   LogOut, MapPin, Menu, Headphones, Watch, Shirt, Lamp, Sparkle,
-  Car, Blocks, Backpack, Speaker, Pencil, Settings as SettingsIcon, X
+  Car, Blocks, Backpack, Speaker, Pencil, Settings as SettingsIcon, X, Share2
 } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { supabase } from "./supabaseClient";
@@ -47,7 +47,7 @@ function Stars({ rating }) {
   );
 }
 
-function ProductTile({ p, onOpen, onAdd, compact, isAdmin, onEdit, onDelete }) {
+function ProductTile({ p, onOpen, onAdd, onBuyNow, compact, isAdmin, onEdit, onDelete }) {
   const Icon = ICONS[p.icon] || Package;
   const discount = p.old_price ? Math.round(100 - (p.price / p.old_price) * 100) : 0;
   if (compact) {
@@ -82,9 +82,14 @@ function ProductTile({ p, onOpen, onAdd, compact, isAdmin, onEdit, onDelete }) {
           {discount > 0 && <span className="discount">-{discount}%</span>}
         </div>
         <p className="sold">{p.sold} bought in past month</p>
-        <button className="btn-add" onClick={(e) => { e.stopPropagation(); onAdd(p, 1); }}>
-          <Plus size={14} /> Add to Cart
-        </button>
+        <div className="ptile-actions">
+          <button className="btn-add" onClick={(e) => { e.stopPropagation(); onAdd(p, 1); }}>
+            <Plus size={14} /> Add to Cart
+          </button>
+          <button className="btn-add buy-now" onClick={(e) => { e.stopPropagation(); onBuyNow(p); }}>
+            Order Now
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -270,7 +275,6 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState("");
   const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "", phone: "", address: "" });
-  const [paymentMethod, setPaymentMethod] = useState("paypal");
   const [placedOrder, setPlacedOrder] = useState(null);
   const [settings, setSettings] = useState({ paypal_client_id: "sb", store_name: "bazaro" });
   const [productModal, setProductModal] = useState(null); // { mode, initial }
@@ -328,6 +332,17 @@ export default function App() {
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
+  // Deep link support: opening a URL like "?product=<id>" jumps straight to that product
+  useEffect(() => {
+    if (loadingCatalog || catalog.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get("product");
+    if (productId) {
+      const match = catalog.find((p) => p.id === productId);
+      if (match) { setActiveProduct(match); setView("product"); }
+    }
+  }, [loadingCatalog, catalog]);
+
   useEffect(() => {
     if (user && !checkoutForm.email) setCheckoutForm((f) => ({ ...f, email: user.email }));
   }, [user]); // eslint-disable-line
@@ -359,6 +374,10 @@ export default function App() {
       return [...prev, { product_id: product.id, qty, product }];
     });
     showToast(`"${product.name}" added to cart`);
+  };
+  const buyNow = (product) => {
+    setCart([{ product_id: product.id, qty: 1, product }]);
+    setView("checkout");
   };
   const updateQty = (productId, delta) => {
     setCart((prev) => prev.map((c) => (c.product_id === productId ? { ...c, qty: c.qty + delta } : c)).filter((c) => c.qty > 0));
@@ -488,7 +507,11 @@ export default function App() {
   const openProduct = (p) => { setActiveProduct(p); setView("product"); };
   const byCategory = (cat) => catalog.filter((p) => p.category === cat);
 
-  const paypalOptions = useMemo(() => ({ "client-id": settings.paypal_client_id || "sb", currency: "USD" }), [settings.paypal_client_id]);
+  const paypalOptions = useMemo(() => ({
+    "client-id": settings.paypal_client_id || "sb",
+    currency: "USD",
+    "disable-funding": "card,credit",
+  }), [settings.paypal_client_id]);
 
   return (
     <div className="app">
@@ -579,7 +602,7 @@ export default function App() {
             {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
               <div className="grid">
                 {filteredProducts.map((p) => (
-                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
+                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
                 ))}
               </div>
             )}
@@ -618,7 +641,21 @@ export default function App() {
               <Stars rating={activeProduct.rating} />
               <div className="pd-price-row"><span className="price big">${Number(activeProduct.price).toFixed(2)}</span>{activeProduct.old_price && <span className="old-price">${Number(activeProduct.old_price).toFixed(2)}</span>}</div>
               <p className="pd-desc">A high-quality {activeProduct.name.toLowerCase()} built to last, with fast nationwide shipping and 30-day easy returns. {activeProduct.sold} customers have already bought this and rated it {Number(activeProduct.rating).toFixed(1)}/5 on average.</p>
-              <button className="btn-primary" onClick={() => addToCart(activeProduct, 1)}><Plus size={16} /> Add to Cart</button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn-primary" onClick={() => buyNow(activeProduct)}><Check size={16} /> Order Now</button>
+                <button className="btn-add" style={{ marginTop: 0 }} onClick={() => addToCart(activeProduct, 1)}><Plus size={14} /> Add to Cart</button>
+                <button
+                  className="btn-add"
+                  style={{ marginTop: 0 }}
+                  onClick={() => {
+                    const url = `${window.location.origin}${window.location.pathname}?product=${activeProduct.id}`;
+                    navigator.clipboard.writeText(url);
+                    showToast("Product link copied!");
+                  }}
+                >
+                  <Share2 size={14} /> Share
+                </button>
+              </div>
               {isAdmin && (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn-add" style={{ marginTop: 0 }} onClick={() => openEditProduct(activeProduct)}><Pencil size={14} /> Edit</button>
@@ -665,36 +702,23 @@ export default function App() {
             <label>Phone number<input value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} /></label>
             <label>Shipping address<textarea rows={3} value={checkoutForm.address} onChange={(e) => setCheckoutForm({ ...checkoutForm, address: e.target.value })} /></label>
 
-            <div className="pay-methods">
-              <label className="pay-method"><input type="radio" checked={paymentMethod === "paypal"} onChange={() => setPaymentMethod("paypal")} /> Pay with PayPal</label>
-              <label className="pay-method"><input type="radio" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} /> Cash on Delivery</label>
-            </div>
-
             <div className="cart-summary flat"><p>Order total: <strong>${cartTotal.toFixed(2)}</strong></p></div>
 
-            {paymentMethod === "cod" ? (
-              <button
-                className="btn-primary"
-                onClick={() => placeOrder({ payment_method: "cod", payment_status: "pending" })}
-              >
-                <Check size={16} /> Place Order
-              </button>
-            ) : (
-              <PayPalScriptProvider options={paypalOptions} key={paypalOptions["client-id"]}>
-                <PayPalButtons
-                  style={{ layout: "vertical" }}
-                  disabled={!checkoutForm.name || !checkoutForm.phone || !checkoutForm.address}
-                  createOrder={(data, actions) => actions.order.create({
-                    purchase_units: buildPurchaseUnits(),
-                  })}
-                  onApprove={async (data, actions) => {
-                    await actions.order.capture();
-                    await placeOrder({ payment_method: "paypal", payment_status: "paid", paypal_order_id: data.orderID });
-                  }}
-                  onError={() => showToast("PayPal payment failed — please try again")}
-                />
-              </PayPalScriptProvider>
-            )}
+            <PayPalScriptProvider options={paypalOptions} key={paypalOptions["client-id"]}>
+              <PayPalButtons
+                style={{ layout: "vertical" }}
+                fundingSource="paypal"
+                disabled={!checkoutForm.name || !checkoutForm.phone || !checkoutForm.address}
+                createOrder={(data, actions) => actions.order.create({
+                  purchase_units: buildPurchaseUnits(),
+                })}
+                onApprove={async (data, actions) => {
+                  await actions.order.capture();
+                  await placeOrder({ payment_method: "paypal", payment_status: "paid", paypal_order_id: data.orderID });
+                }}
+                onError={() => showToast("PayPal payment failed — please try again")}
+              />
+            </PayPalScriptProvider>
           </div>
         </main>
       )}
