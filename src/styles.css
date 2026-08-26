@@ -150,7 +150,7 @@ h1,h2,h3,h4,h5{font-family:'Fraunces',serif;margin:0;color:#0F1111;}
 .back-top{width:100%;background:#37475A;color:#fff;border:none;padding:14px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;}
 .back-top:hover{background:#485769;}
 
-.footer{background:var(--ink);color:#DDD;}
+.footer{background:var(--ink);color:#DDD;padding-bottom:76px;}
 .footer-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding:36px 24px;max-width:1100px;margin:0 auto;}
 .footer-cols h5{color:#fff;font-size:14px;margin-bottom:12px;font-family:'Inter',sans-serif;}
 .footer-cols p{font-size:13px;margin:0 0 8px;cursor:default;}
@@ -171,7 +171,7 @@ h1,h2,h3,h4,h5{font-family:'Fraunces',serif;margin:0;color:#0F1111;}
 .admin-icon-btn{background:rgba(255,255,255,0.9);border:none;border-radius:5px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
 .admin-icon-btn:hover{background:#fff;}
 .admin-icon-btn.danger{color:var(--price);}
-.admin-fab{position:fixed;bottom:70px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--ink);border:1px solid #a06507;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);z-index:40;}
+.admin-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--ink);border:1px solid #a06507;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);z-index:40;}
 .admin-fab:hover{background:var(--accent-hover);}
 
 /* ---------- Modal / drawer (product edit, admin panel) ---------- */

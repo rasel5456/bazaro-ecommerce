@@ -12,7 +12,7 @@ import "./styles.css";
 const CATEGORIES = ["Electronics", "Fashion", "Home & Living", "Beauty", "Toys"];
 const ICONS = { Package, Headphones, Watch, Shirt, Lamp, Sparkle, Car, Blocks, Backpack, Speaker };
 const ICON_NAMES = Object.keys(ICONS);
-const CART_KEY = "Amazon_guest_cart";
+const CART_KEY = "bazaro_guest_cart";
 
 const CATEGORY_BLOCKS = [
   { title: "Top picks in Electronics", items: [["Earbuds", "Headphones"], ["Smart watches", "Watch"], ["Speakers", "Speaker"], ["Everyday gadgets", "Package"]], link: "Explore all Electronics" },
@@ -22,7 +22,7 @@ const CATEGORY_BLOCKS = [
 ];
 
 const HERO_SLIDES = [
-  { eyebrow: "Amazon EXCLUSIVE", title: "Big Summer Sale", sub: "Up to 40% off electronics, fashion & home essentials", cta: "Shop the sale", grad: ["#131921", "#3A6EA5"] },
+  { eyebrow: "BAZARO EXCLUSIVE", title: "Big Summer Sale", sub: "Up to 40% off electronics, fashion & home essentials", cta: "Shop the sale", grad: ["#131921", "#3A6EA5"] },
   { eyebrow: "JUST LANDED", title: "New Arrivals Every Week", sub: "Fresh picks in fashion and home decor, curated for you", cta: "See what's new", grad: ["#232F3E", "#B33A2E"] },
   { eyebrow: "ON ORDERS OVER $25", title: "Free Shipping, Every Day", sub: "Fast, reliable delivery nationwide with easy 30-day returns", cta: "Start shopping", grad: ["#0F5C5C", "#FF9900"] },
 ];
@@ -227,6 +227,8 @@ function AdminPanel({ onClose, orders, onUpdateStatus, settings, onSaveSettings 
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
+                {o.paypal_capture_id && <p className="muted" style={{ marginTop: 4 }}>PayPal Transaction ID: {o.paypal_capture_id}</p>}
+                {o.paypal_order_id && <p className="muted">PayPal Order ID: {o.paypal_order_id}</p>}
               </div>
             ))}
           </div>
@@ -275,8 +277,9 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [toast, setToast] = useState("");
   const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [buyNowItem, setBuyNowItem] = useState(null); // set when "Order Now" is used, so we don't touch the real cart
   const [placedOrder, setPlacedOrder] = useState(null);
-  const [settings, setSettings] = useState({ paypal_client_id: "sb", store_name: "Amazon" });
+  const [settings, setSettings] = useState({ paypal_client_id: "sb", store_name: "bazaro" });
   const [productModal, setProductModal] = useState(null); // { mode, initial }
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [adminOrders, setAdminOrders] = useState([]);
@@ -376,7 +379,7 @@ export default function App() {
     showToast(`"${product.name}" added to cart`);
   };
   const buyNow = (product) => {
-    setCart([{ product_id: product.id, qty: 1, product }]);
+    setBuyNowItem({ product_id: product.id, qty: 1, product });
     setView("checkout");
   };
   const updateQty = (productId, delta) => {
@@ -387,11 +390,15 @@ export default function App() {
   const cartTotal = cart.reduce((s, c) => s + (c.product?.price || 0) * c.qty, 0);
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
-  /* Build PayPal purchase_units, one per distinct seller email in the cart.
+  // What checkout actually charges for: either the single "Order Now" item, or the full cart
+  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
+  const checkoutTotal = checkoutItems.reduce((s, c) => s + (c.product?.price || 0) * c.qty, 0);
+
+  /* Build PayPal purchase_units, one per distinct seller email among the items being checked out.
      Products without a paypal_email fall back to the site's default account. */
   const buildPurchaseUnits = () => {
     const groups = {};
-    cart.forEach((c) => {
+    checkoutItems.forEach((c) => {
       const key = c.product.paypal_email || "__default__";
       if (!groups[key]) groups[key] = 0;
       groups[key] += c.product.price * c.qty;
@@ -406,19 +413,23 @@ export default function App() {
   /* ---- checkout ---- */
   const placeOrder = async (paymentInfo) => {
     if (!checkoutForm.name || !checkoutForm.phone || !checkoutForm.address) { showToast("Please fill in all fields"); return; }
-    const items = cart.map((c) => ({ name: c.product.name, qty: c.qty, price: c.product.price }));
+    const items = checkoutItems.map((c) => ({ name: c.product.name, qty: c.qty, price: c.product.price }));
     const { data, error } = await supabase
       .from("orders")
       .insert({
         user_id: user ? user.id : null,
-        items, total: cartTotal,
+        items, total: checkoutTotal,
         full_name: checkoutForm.name, phone: checkoutForm.phone, address: checkoutForm.address, email: checkoutForm.email,
         payment_method: paymentInfo.payment_method, payment_status: paymentInfo.payment_status,
-        paypal_order_id: paymentInfo.paypal_order_id || null,
+        paypal_order_id: paymentInfo.paypal_order_id || null, paypal_capture_id: paymentInfo.paypal_capture_id || null,
       })
       .select().single();
     if (error) { showToast("Could not place order: " + error.message); return; }
-    setCart([]);
+    if (buyNowItem) {
+      setBuyNowItem(null);
+    } else {
+      setCart([]);
+    }
     if (user) setOrders((prev) => [data, ...prev]);
     setPlacedOrder(data);
     setView("order-success");
@@ -518,15 +529,25 @@ export default function App() {
       <header className="header">
         <div className="header-top">
           <div className="logo" onClick={() => { setView("home"); setActiveCategory(null); setQuery(""); }}>
-            <span className="logo-mark">A</span><span>Amazon</span>
+            <span className="logo-mark">B</span><span>bazaro</span>
           </div>
           <div className="deliver">
             <MapPin size={16} />
             <div><p className="deliver-sub">Deliver to</p><p className="deliver-main">United States</p></div>
           </div>
           <div className="search-wrap">
-            <select className="search-cat"><option>All</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
-            <input placeholder="Search Amazon" value={query} onChange={(e) => { setQuery(e.target.value); setView("home"); setActiveCategory(null); }} />
+            <select
+              className="search-cat"
+              value={activeCategory || "All"}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveCategory(val === "All" ? null : val);
+                setView("home"); setQuery("");
+              }}
+            >
+              <option>All</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <input placeholder="Search Bazaro" value={query} onChange={(e) => { setQuery(e.target.value); setView("home"); setActiveCategory(null); }} />
             <button className="search-btn"><Search size={18} color="#131921" /></button>
           </div>
           <nav className="header-actions">
@@ -547,7 +568,7 @@ export default function App() {
             <button className="acct-btn" onClick={() => setView("orders")}>
               <p className="acct-sub">Returns</p><p className="acct-main">&amp; Orders</p>
             </button>
-            <button className="icon-btn cart-btn" onClick={() => setView("cart")}>
+            <button className="icon-btn cart-btn" onClick={() => { setBuyNowItem(null); setView("cart"); }}>
               <ShoppingCart size={22} />
               {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
               <span>Cart</span>
@@ -687,7 +708,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div className="cart-summary"><p>Subtotal: <strong>${cartTotal.toFixed(2)}</strong></p><button className="btn-primary" onClick={() => setView("checkout")}>Proceed to Checkout</button></div>
+              <div className="cart-summary"><p>Subtotal: <strong>${cartTotal.toFixed(2)}</strong></p><button className="btn-primary" onClick={() => { setBuyNowItem(null); setView("checkout"); }}>Proceed to Checkout</button></div>
             </>
           )}
         </main>
@@ -702,7 +723,7 @@ export default function App() {
             <label>Phone number<input value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} /></label>
             <label>Shipping address<textarea rows={3} value={checkoutForm.address} onChange={(e) => setCheckoutForm({ ...checkoutForm, address: e.target.value })} /></label>
 
-            <div className="cart-summary flat"><p>Order total: <strong>${cartTotal.toFixed(2)}</strong></p></div>
+            <div className="cart-summary flat"><p>Order total: <strong>${checkoutTotal.toFixed(2)}</strong></p></div>
 
             <PayPalScriptProvider options={paypalOptions} key={paypalOptions["client-id"]}>
               <PayPalButtons
@@ -713,8 +734,12 @@ export default function App() {
                   purchase_units: buildPurchaseUnits(),
                 })}
                 onApprove={async (data, actions) => {
-                  await actions.order.capture();
-                  await placeOrder({ payment_method: "paypal", payment_status: "paid", paypal_order_id: data.orderID });
+                  const captureDetails = await actions.order.capture();
+                  const captureId = captureDetails?.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
+                  await placeOrder({
+                    payment_method: "paypal", payment_status: "paid",
+                    paypal_order_id: data.orderID, paypal_capture_id: captureId,
+                  });
                 }}
                 onError={() => showToast("PayPal payment failed — please try again")}
               />
@@ -728,6 +753,7 @@ export default function App() {
           <div className="success-icon"><Check size={32} /></div>
           <h2>Order placed!</h2>
           <p className="muted">Order ID: {placedOrder.id.slice(0, 8).toUpperCase()}</p>
+          {placedOrder.paypal_capture_id && <p className="muted">PayPal Transaction ID: {placedOrder.paypal_capture_id}</p>}
           <p className="muted">Total: ${Number(placedOrder.total).toFixed(2)} — {placedOrder.payment_method === "paypal" ? "Paid via PayPal" : "Cash on Delivery"}</p>
           <button className="btn-primary" onClick={() => setView("home")}>Continue Shopping</button>
         </main>
@@ -745,6 +771,7 @@ export default function App() {
                   <div className="order-head"><strong>{o.id.slice(0, 8).toUpperCase()}</strong><span className="muted">{new Date(o.created_at).toLocaleString("en-US")}</span></div>
                   <ul>{o.items.map((it, idx) => (<li key={idx}>{it.name} × {it.qty} — ${(it.price * it.qty).toFixed(2)}</li>))}</ul>
                   <p className="order-total">Total: ${Number(o.total).toFixed(2)} · Status: {o.status || "pending"}</p>
+                  {o.paypal_capture_id && <p className="muted">PayPal Transaction ID: {o.paypal_capture_id}</p>}
                 </div>
               ))}
             </div>
@@ -783,17 +810,17 @@ export default function App() {
 
       <footer className="footer">
         <div className="footer-cols">
-          <div><h5>Get to Know Us</h5><p>About Amazon</p><p>Careers</p><p>Press</p><p>Amazon Science</p></div>
+          <div><h5>Get to Know Us</h5><p>About Bazaro</p><p>Careers</p><p>Press</p><p>Bazaro Science</p></div>
           <div><h5>Make Money with Us</h5><p>Advertise Your Products</p><p>Become an Affiliate</p></div>
-          <div><h5>Amazon Payment Products</h5><p>Amazon Business Card</p><p>Shop with Points</p></div>
+          <div><h5>Bazaro Payment Products</h5><p>Bazaro Business Card</p><p>Shop with Points</p></div>
           <div><h5>Let Us Help You</h5><p onClick={() => setView("orders")} className="link">Your Orders</p><p>Shipping Rates &amp; Policies</p><p>Returns &amp; Replacements</p><p>Help</p></div>
         </div>
         <div className="footer-meta">
-          <div className="brand-bottom"><span className="logo-mark small">B</span><span>Amazon</span></div>
+          <div className="brand-bottom"><span className="logo-mark small">B</span><span>bazaro</span></div>
           <span>English</span><span>USD - U.S. Dollar</span><span>United States</span>
         </div>
         <StripeDivider />
-        <p className="copyright">© 1996–2026 Amazon.com — a university/demo project. Not affiliated with Amazon.com, Inc.</p>
+        <p className="copyright">© 1996–2026 Bazaro.com — a university/demo project. Not affiliated with Amazon.com, Inc.</p>
       </footer>
 
       {isAdmin && (
@@ -821,4 +848,3 @@ export default function App() {
     </div>
   );
 }
-
