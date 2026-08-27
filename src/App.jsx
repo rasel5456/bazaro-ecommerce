@@ -675,7 +675,7 @@ export default function App() {
                   style={{ marginTop: 0 }}
                   onClick={() => {
                     const code = activeProduct.short_id || activeProduct.id;
-                    const url = `${window.location.origin}${window.location.pathname}?p=${code}`;
+                    const url = `${window.location.origin}/share/${code}`;
                     navigator.clipboard.writeText(url);
                     showToast("Product link copied!");
                   }}
