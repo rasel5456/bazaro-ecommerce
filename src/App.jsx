@@ -81,15 +81,30 @@ function ProductTile({ p, onOpen, onAdd, onBuyNow, compact, isAdmin, onEdit, onD
           {p.old_price && <span className="old-price">${Number(p.old_price).toFixed(2)}</span>}
           {discount > 0 && <span className="discount">-{discount}%</span>}
         </div>
-        <p className="sold">{p.sold} bought in past month</p>
-        <div className="ptile-actions">
-          <button className="btn-add" onClick={(e) => { e.stopPropagation(); onAdd(p, 1); }}>
-            <Plus size={14} /> Add to Cart
-          </button>
-          <button className="btn-add buy-now" onClick={(e) => { e.stopPropagation(); onBuyNow(p); }}>
-            Order Now
-          </button>
-        </div>
+        <p className="sold">{p.sold} bought in past month{p.stock !== undefined && p.stock <= 5 && p.stock > 0 ? ` · Only ${p.stock} left` : ""}</p>
+        {p.stock !== undefined && p.stock <= 0 ? (
+          <p className="out-of-stock">Out of Stock</p>
+        ) : (
+          <div className="ptile-actions">
+            <button className="btn-add" onClick={(e) => { e.stopPropagation(); onAdd(p, 1); }}>
+              <Plus size={14} /> Add to Cart
+            </button>
+            <button className="btn-add buy-now" onClick={(e) => { e.stopPropagation(); onBuyNow(p); }}>
+              Order Now
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddProductTile({ onClick }) {
+  return (
+    <div className="ptile add-product-tile" onClick={onClick}>
+      <div className="add-product-inner">
+        <Plus size={32} />
+        <p>Add New Product</p>
       </div>
     </div>
   );
@@ -169,6 +184,7 @@ function ProductModal({ mode, initial, onClose, onSave }) {
             </select>
           </label>
           <label>Price ($)<input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} /></label>
+          <label>Stock quantity<input type="number" value={form.stock ?? ""} onChange={(e) => set("stock", e.target.value)} placeholder="e.g. 100" /></label>
           <label>Original price ($, optional)<input type="number" value={form.old_price || ""} onChange={(e) => set("old_price", e.target.value)} /></label>
           <label>Badge (optional, e.g. NEW, HOT)<input value={form.badge || ""} onChange={(e) => set("badge", e.target.value)} /></label>
           <label>Seller PayPal email (optional — leave blank to use the site's default PayPal account)
@@ -218,7 +234,7 @@ function AdminPanel({ onClose, orders, onUpdateStatus, settings, onSaveSettings 
                 <p className="muted" style={{ margin: "2px 0 8px" }}>{o.address}</p>
                 <ul>{o.items.map((it, idx) => (<li key={idx}>{it.name} × {it.qty} — ${(it.price * it.qty).toFixed(2)}</li>))}</ul>
                 <div className="order-foot">
-                  <p className="order-total">Total: ${Number(o.total).toFixed(2)} · {o.payment_method === "paypal" ? "PayPal" : "COD"} ({o.payment_status})</p>
+                  <p className="order-total">Total: ${Number(o.total).toFixed(2)} · PayPal ({o.payment_status})</p>
                   <select value={o.status || "pending"} onChange={(e) => onUpdateStatus(o.id, e.target.value)}>
                     <option value="pending">Pending</option>
                     <option value="paid">Paid</option>
@@ -375,19 +391,27 @@ export default function App() {
 
   /* ---- cart (guest-friendly, localStorage) ---- */
   const addToCart = (product, qty) => {
+    const available = product.stock ?? 999;
+    if (available <= 0) { showToast("Out of stock"); return; }
     setCart((prev) => {
       const existing = prev.find((c) => c.product_id === product.id);
-      if (existing) return prev.map((c) => (c.product_id === product.id ? { ...c, qty: c.qty + qty } : c));
-      return [...prev, { product_id: product.id, qty, product }];
+      const nextQty = Math.min((existing?.qty || 0) + qty, available);
+      if (existing) return prev.map((c) => (c.product_id === product.id ? { ...c, qty: nextQty } : c));
+      return [...prev, { product_id: product.id, qty: nextQty, product }];
     });
     showToast(`"${product.name}" added to cart`);
   };
   const buyNow = (product) => {
+    if ((product.stock ?? 999) <= 0) { showToast("Out of stock"); return; }
     setBuyNowItem({ product_id: product.id, qty: 1, product });
     setView("checkout");
   };
   const updateQty = (productId, delta) => {
-    setCart((prev) => prev.map((c) => (c.product_id === productId ? { ...c, qty: c.qty + delta } : c)).filter((c) => c.qty > 0));
+    setCart((prev) => prev.map((c) => {
+      if (c.product_id !== productId) return c;
+      const available = c.product.stock ?? 999;
+      return { ...c, qty: Math.min(c.qty + delta, available) };
+    }).filter((c) => c.qty > 0));
   };
   const removeFromCart = (productId) => setCart((prev) => prev.filter((c) => c.product_id !== productId));
 
@@ -429,6 +453,17 @@ export default function App() {
       })
       .select().single();
     if (error) { showToast("Could not place order: " + error.message); return; }
+
+    // Reduce stock and bump "sold" for each item just purchased
+    for (const c of checkoutItems) {
+      await supabase.rpc("record_sale", { p_product_id: c.product_id, p_qty: c.qty });
+    }
+    setCatalog((prev) => prev.map((p) => {
+      const bought = checkoutItems.find((c) => c.product_id === p.id);
+      if (!bought) return p;
+      return { ...p, stock: Math.max((p.stock ?? 0) - bought.qty, 0), sold: (p.sold || 0) + bought.qty };
+    }));
+
     if (buyNowItem) {
       setBuyNowItem(null);
     } else {
@@ -473,6 +508,7 @@ export default function App() {
         old_price: form.old_price ? Number(form.old_price) : null, badge: form.badge || null,
         icon: form.icon, grad_from: g[0], grad_to: g[1], rating: 4.0, sold: 0, created_by: user.id,
         image_url: imageUrl, paypal_email: form.paypal_email || null, short_id: shortId,
+        stock: form.stock !== "" && form.stock != null ? Number(form.stock) : 100,
       }).select().single();
       if (error) { showToast("Error: " + error.message); return; }
       setCatalog((prev) => [data, ...prev]);
@@ -482,6 +518,7 @@ export default function App() {
         name: form.name, category: form.category, price: Number(form.price),
         old_price: form.old_price ? Number(form.old_price) : null, badge: form.badge || null, icon: form.icon,
         image_url: imageUrl, paypal_email: form.paypal_email || null,
+        stock: form.stock !== "" && form.stock != null ? Number(form.stock) : 0,
       }).eq("id", form.id).select().single();
       if (error) { showToast("Error: " + error.message); return; }
       setCatalog((prev) => prev.map((p) => (p.id === data.id ? data : p)));
@@ -627,6 +664,7 @@ export default function App() {
             <h2>{activeCategory ? activeCategory : query ? `Results for "${query}"` : "Today's Best Deals"}</h2>
             {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
               <div className="grid">
+                {isAdmin && !activeCategory && !query && <AddProductTile onClick={openAddProduct} />}
                 {filteredProducts.map((p) => (
                   <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
                 ))}
@@ -667,22 +705,26 @@ export default function App() {
               <Stars rating={activeProduct.rating} />
               <div className="pd-price-row"><span className="price big">${Number(activeProduct.price).toFixed(2)}</span>{activeProduct.old_price && <span className="old-price">${Number(activeProduct.old_price).toFixed(2)}</span>}</div>
               <p className="pd-desc">A high-quality {activeProduct.name.toLowerCase()} built to last, with fast nationwide shipping and 30-day easy returns. {activeProduct.sold} customers have already bought this and rated it {Number(activeProduct.rating).toFixed(1)}/5 on average.</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button className="btn-primary" onClick={() => buyNow(activeProduct)}><Check size={16} /> Order Now</button>
-                <button className="btn-add" style={{ marginTop: 0 }} onClick={() => addToCart(activeProduct, 1)}><Plus size={14} /> Add to Cart</button>
-                <button
-                  className="btn-add"
-                  style={{ marginTop: 0 }}
-                  onClick={() => {
-                    const code = activeProduct.short_id || activeProduct.id;
-                    const url = `${window.location.origin}/share/${code}`;
-                    navigator.clipboard.writeText(url);
-                    showToast("Product link copied!");
-                  }}
-                >
-                  <Share2 size={14} /> Share
-                </button>
-              </div>
+              {activeProduct.stock !== undefined && activeProduct.stock <= 0 ? (
+                <p className="out-of-stock">Out of Stock</p>
+              ) : (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn-primary" onClick={() => buyNow(activeProduct)}><Check size={16} /> Order Now</button>
+                  <button className="btn-add" style={{ marginTop: 0 }} onClick={() => addToCart(activeProduct, 1)}><Plus size={14} /> Add to Cart</button>
+                  <button
+                    className="btn-add"
+                    style={{ marginTop: 0 }}
+                    onClick={() => {
+                      const code = activeProduct.short_id || activeProduct.id;
+                      const url = `${window.location.origin}/share/${code}`;
+                      navigator.clipboard.writeText(url);
+                      showToast("Product link copied!");
+                    }}
+                  >
+                    <Share2 size={14} /> Share
+                  </button>
+                </div>
+              )}
               {isAdmin && (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn-add" style={{ marginTop: 0 }} onClick={() => openEditProduct(activeProduct)}><Pencil size={14} /> Edit</button>
@@ -760,7 +802,7 @@ export default function App() {
           <h2>Order placed!</h2>
           <p className="muted">Order ID: {placedOrder.id.slice(0, 8).toUpperCase()}</p>
           {placedOrder.paypal_capture_id && <p className="muted">PayPal Transaction ID: {placedOrder.paypal_capture_id}</p>}
-          <p className="muted">Total: ${Number(placedOrder.total).toFixed(2)} — {placedOrder.payment_method === "paypal" ? "Paid via PayPal" : "Cash on Delivery"}</p>
+          <p className="muted">Total: ${Number(placedOrder.total).toFixed(2)} — Paid via PayPal</p>
           <button className="btn-primary" onClick={() => setView("home")}>Continue Shopping</button>
         </main>
       )}
