@@ -57,6 +57,8 @@ h1,h2,h3,h4,h5{font-family:'Fraunces',serif;margin:0;color:#0F1111;}
 .hero-product img{width:92px;height:68px;object-fit:contain;border-radius:5px;background:#fff;}
 .hero-product span{font-size:11px;text-align:center;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;}
 .hero-product strong{font-size:13px;color:var(--accent);}
+.hero-product-edit,.hero-product-add{display:flex;align-items:center;gap:3px;border:0;border-radius:4px;background:var(--accent);color:var(--ink);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;}
+.hero-product-add{position:absolute;right:16px;bottom:16px;padding:6px 9px;font-size:11px;z-index:2;}
 .hero-product.d0{top:24%;right:24%;}
 .hero-product.d1{top:47%;right:4%;}
 .decor.d0{top:20%;right:15%;transform:rotate(-12deg);}

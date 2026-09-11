@@ -110,7 +110,7 @@ function AddProductTile({ onClick }) {
   );
 }
 
-function Hero({ onShop, featuredProducts }) {
+function Hero({ onShop, featuredProducts, isAdmin, onEdit, onAddProduct }) {
   const [i, setI] = useState(0);
   useEffect(() => { const t = setInterval(() => setI((v) => (v + 1) % HERO_SLIDES.length), 5000); return () => clearInterval(t); }, []);
   const s = HERO_SLIDES[i];
@@ -129,11 +129,13 @@ function Hero({ onShop, featuredProducts }) {
           <div key={p.id} className={`decor d${idx} hero-product`} onClick={() => onShop()}>
             {p.image_url ? <img src={p.image_url} alt={p.name} /> : React.createElement(ICONS[p.icon] || Package, { size: 42, color: "#fff" })}
             <span>{p.name}</span><strong>${Number(p.price).toFixed(2)}</strong>
+            {isAdmin && <button className="hero-product-edit" onClick={(e) => { e.stopPropagation(); onEdit(p); }}><Pencil size={11} /> Edit</button>}
           </div>
         ))}
         {!featuredProducts?.length && decorIcons.map((Ic, idx) => (
           <span key={idx} className={`decor d${idx}`}><Ic size={30 + (idx % 3) * 10} color="rgba(255,255,255,0.85)" strokeWidth={1.3} /></span>
         ))}
+        {isAdmin && <button className="hero-product-add" onClick={onAddProduct}><Plus size={12} /> Add banner product</button>}
       </div>
       <button className="hero-nav right" onClick={() => setI((i + 1) % HERO_SLIDES.length)}><ChevronRight /></button>
       <div className="hero-dots">
@@ -637,20 +639,8 @@ export default function App() {
 
       {view === "home" && (
         <main>
-          {!activeCategory && !query && <Hero onShop={() => window.scrollTo({ top: 600, behavior: "smooth" })} featuredProducts={catalog} />}
+          {!activeCategory && !query && <Hero onShop={() => window.scrollTo({ top: 600, behavior: "smooth" })} featuredProducts={catalog} isAdmin={isAdmin} onEdit={openEditProduct} onAddProduct={openAddProduct} />}
           <StripeDivider />
-
-          <section className="section">
-            <h2>{activeCategory ? activeCategory : query ? `Results for "${query}"` : "Today's Best Deals"}</h2>
-            {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
-              <div className="grid">
-                {isAdmin && !activeCategory && !query && <AddProductTile onClick={openAddProduct} />}
-                {filteredProducts.map((p) => (
-                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
-                ))}
-              </div>
-            )}
-          </section>
 
           {!activeCategory && !query && (
             <section className="section">
@@ -678,6 +668,18 @@ export default function App() {
               </div>
             </section>
           )}
+
+          <section className="section">
+            <h2>{activeCategory ? activeCategory : query ? `Results for "${query}"` : "Today's Best Deals"}</h2>
+            {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
+              <div className="grid">
+                {isAdmin && !activeCategory && !query && <AddProductTile onClick={openAddProduct} />}
+                {filteredProducts.map((p) => (
+                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
+                ))}
+              </div>
+            )}
+          </section>
 
           {!activeCategory && !query && CATEGORIES.map((cat) => (
             <section className="section" key={cat}>
