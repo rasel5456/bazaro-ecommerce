@@ -375,6 +375,36 @@ export default function App() {
   }, [loadingCatalog, catalog]);
 
   useEffect(() => {
+    const product = view === "product" ? activeProduct : null;
+    const title = product ? `${product.name} — Bazaro` : "Bazaro — Shop smart, live better";
+    const description = product
+      ? `Shop ${product.name} in ${product.category} at Bazaro for $${Number(product.price).toFixed(2)}. Fast delivery and easy returns.`
+      : "Shop electronics, fashion, home and living, beauty, and toys at Bazaro. Discover great products, easy checkout, and fast nationwide delivery.";
+    document.title = title;
+    let meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", description);
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", product ? `${window.location.origin}/?p=${product.short_id || product.id}` : `${window.location.origin}/`);
+    let schema = document.getElementById("bazaro-product-schema");
+    if (schema) schema.remove();
+    if (product) {
+      schema = document.createElement("script");
+      schema.id = "bazaro-product-schema";
+      schema.type = "application/ld+json";
+      schema.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        category: product.category,
+        image: product.image_url ? [product.image_url] : undefined,
+        offers: { "@type": "Offer", priceCurrency: "USD", price: Number(product.price).toFixed(2), availability: product.stock === undefined || product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock" },
+        aggregateRating: product.rating ? { "@type": "AggregateRating", ratingValue: Number(product.rating).toFixed(1), ratingCount: Math.max(Number(product.sold) || 1, 1) } : undefined,
+      });
+      document.head.appendChild(schema);
+    }
+  }, [activeProduct, view]);
+
+  useEffect(() => {
     if (user && !checkoutForm.email) setCheckoutForm((f) => ({ ...f, email: user.email }));
   }, [user]); // eslint-disable-line
 
