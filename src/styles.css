@@ -53,6 +53,12 @@ h1,h2,h3,h4,h5{font-family:'Fraunces',serif;margin:0;color:#0F1111;}
 .dot.active{background:var(--accent);}
 .hero-decor{position:absolute;right:0;top:0;bottom:0;width:45%;}
 .decor{position:absolute;opacity:0.9;}
+.hero-product{display:flex;flex-direction:column;align-items:center;gap:3px;width:130px;padding:8px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:#fff;cursor:pointer;transform:none!important;}
+.hero-product img{width:92px;height:68px;object-fit:contain;border-radius:5px;background:#fff;}
+.hero-product span{font-size:11px;text-align:center;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+.hero-product strong{font-size:13px;color:var(--accent);}
+.hero-product.d0{top:24%;right:24%;}
+.hero-product.d1{top:47%;right:4%;}
 .decor.d0{top:20%;right:15%;transform:rotate(-12deg);}
 .decor.d1{top:55%;right:35%;transform:rotate(8deg);}
 .decor.d2{top:15%;right:45%;transform:rotate(20deg);}

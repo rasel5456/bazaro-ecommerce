@@ -15,10 +15,10 @@ const ICON_NAMES = Object.keys(ICONS);
 const CART_KEY = "bazaro_guest_cart";
 
 const CATEGORY_BLOCKS = [
-  { title: "Top picks in Electronics", items: [["Earbuds", "Headphones"], ["Smart watches", "Watch"], ["Speakers", "Speaker"], ["Everyday gadgets", "Package"]], link: "Explore all Electronics" },
-  { title: "New arrivals under $25", items: [["Table lamps", "Lamp"], ["Cookware", "Package"], ["Backpacks", "Backpack"], ["Skincare", "Sparkle"]], link: "Shop the latest" },
-  { title: "Fashion trends you'll love", items: [["Shirts", "Shirt"], ["Dresses", "Sparkle"], ["Backpacks", "Backpack"], ["Lipsticks", "Package"]], link: "See more Fashion" },
-  { title: "Toys for every age", items: [["RC cars", "Car"], ["Building sets", "Blocks"], ["Learning toys", "Sparkle"], ["Outdoor play", "Package"]], link: "Explore all Toys" },
+  { category: "Electronics", title: "Top picks in Electronics", items: [["Earbuds", "Headphones"], ["Smart watches", "Watch"], ["Speakers", "Speaker"], ["Everyday gadgets", "Package"]], link: "Explore all Electronics" },
+  { category: "Home & Living", title: "New arrivals under $25", items: [["Table lamps", "Lamp"], ["Cookware", "Package"], ["Backpacks", "Backpack"], ["Skincare", "Sparkle"]], link: "Shop the latest" },
+  { category: "Fashion", title: "Fashion trends you'll love", items: [["Shirts", "Shirt"], ["Dresses", "Sparkle"], ["Backpacks", "Backpack"], ["Lipsticks", "Package"]], link: "See more Fashion" },
+  { category: "Toys", title: "Toys for every age", items: [["RC cars", "Car"], ["Building sets", "Blocks"], ["Learning toys", "Sparkle"], ["Outdoor play", "Package"]], link: "Explore all Toys" },
 ];
 
 const HERO_SLIDES = [
@@ -110,7 +110,7 @@ function AddProductTile({ onClick }) {
   );
 }
 
-function Hero({ onShop }) {
+function Hero({ onShop, featuredProducts }) {
   const [i, setI] = useState(0);
   useEffect(() => { const t = setInterval(() => setI((v) => (v + 1) % HERO_SLIDES.length), 5000); return () => clearInterval(t); }, []);
   const s = HERO_SLIDES[i];
@@ -125,7 +125,13 @@ function Hero({ onShop }) {
         <button className="btn-primary" onClick={onShop}>{s.cta}</button>
       </div>
       <div className="hero-decor">
-        {decorIcons.map((Ic, idx) => (
+        {featuredProducts?.slice(0, 2).map((p, idx) => (
+          <div key={p.id} className={`decor d${idx} hero-product`} onClick={() => onShop()}>
+            {p.image_url ? <img src={p.image_url} alt={p.name} /> : React.createElement(ICONS[p.icon] || Package, { size: 42, color: "#fff" })}
+            <span>{p.name}</span><strong>${Number(p.price).toFixed(2)}</strong>
+          </div>
+        ))}
+        {!featuredProducts?.length && decorIcons.map((Ic, idx) => (
           <span key={idx} className={`decor d${idx}`}><Ic size={30 + (idx % 3) * 10} color="rgba(255,255,255,0.85)" strokeWidth={1.3} /></span>
         ))}
       </div>
@@ -631,7 +637,7 @@ export default function App() {
 
       {view === "home" && (
         <main>
-          {!activeCategory && !query && <Hero onShop={() => window.scrollTo({ top: 600, behavior: "smooth" })} />}
+          {!activeCategory && !query && <Hero onShop={() => window.scrollTo({ top: 600, behavior: "smooth" })} featuredProducts={catalog} />}
           <StripeDivider />
 
           <section className="section">
@@ -655,10 +661,13 @@ export default function App() {
                     <div className="block-items">
                       {b.items.map(([label, iconName], i2) => {
                         const Ic = ICONS[iconName] || Package;
+                        const product = catalog.filter((p) => p.category === b.category)[i2];
                         return (
                           <div className="block-item" key={i2} onClick={() => setQuery(label.split(" ")[0])}>
-                            <div className="block-thumb"><Ic size={26} color="#fff" strokeWidth={1.5} /></div>
-                            <p>{label}</p>
+                            <div className="block-thumb" style={{ background: product?.image_url ? "#fff" : undefined }}>
+                              {product?.image_url ? <img src={product.image_url} alt={product.name} className="tile-img" /> : <Ic size={26} color="#fff" strokeWidth={1.5} />}
+                            </div>
+                            <p>{product?.name || label}</p>
                           </div>
                         );
                       })}
