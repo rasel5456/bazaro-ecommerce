@@ -634,6 +634,18 @@ export default function App() {
           {!activeCategory && !query && <Hero onShop={() => window.scrollTo({ top: 600, behavior: "smooth" })} />}
           <StripeDivider />
 
+          <section className="section">
+            <h2>{activeCategory ? activeCategory : query ? `Results for "${query}"` : "Today's Best Deals"}</h2>
+            {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
+              <div className="grid">
+                {isAdmin && !activeCategory && !query && <AddProductTile onClick={openAddProduct} />}
+                {filteredProducts.map((p) => (
+                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
+                ))}
+              </div>
+            )}
+          </section>
+
           {!activeCategory && !query && (
             <section className="section">
               <div className="block-grid">
@@ -657,20 +669,6 @@ export default function App() {
               </div>
             </section>
           )}
-
-          <StripeDivider />
-
-          <section className="section">
-            <h2>{activeCategory ? activeCategory : query ? `Results for "${query}"` : "Today's Best Deals"}</h2>
-            {loadingCatalog ? <p className="muted">Loading...</p> : filteredProducts.length === 0 ? <p className="muted">No products found.</p> : (
-              <div className="grid">
-                {isAdmin && !activeCategory && !query && <AddProductTile onClick={openAddProduct} />}
-                {filteredProducts.map((p) => (
-                  <ProductTile key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} onBuyNow={buyNow} isAdmin={isAdmin} onEdit={openEditProduct} onDelete={deleteProduct} />
-                ))}
-              </div>
-            )}
-          </section>
 
           {!activeCategory && !query && CATEGORIES.map((cat) => (
             <section className="section" key={cat}>
